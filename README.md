@@ -7,8 +7,6 @@
 RYOIKI-TENKAI is a cursed technique visualizer based on the popular anime series, Jujutsu Kaisen 呪術廻戦. It combines the MediaPipe library with Three.js to recreate cursed techniques from Jujutsu Kaisen through hand gestures and particle systems. Now featuring 16 unique techniques and domain expansions!
 </p>
 
-![Demo GIF](https://github.com/user-attachments/assets/8ad2b871-02c0-4b97-95f3-34682e745be0)
-
 ![React](https://img.shields.io/badge/React-18.2.0-blue) ![Three.js](https://img.shields.io/badge/Three.js-r128-green) ![MediaPipe](https://img.shields.io/badge/MediaPipe-Hands-brightgreen) ![Vite](https://img.shields.io/badge/Vite-4.0-purple) ![Techniques](https://img.shields.io/badge/Techniques-16-orange)
 
 <br>
