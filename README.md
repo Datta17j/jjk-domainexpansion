@@ -19,7 +19,7 @@ RYOIKI-TENKAI is a cursed technique visualizer based on the popular anime series
 
 **3D & ML**
 
-![technologies](https://skillicons.dev/icons?i=threejs,python&perline=10)
+![technologies](https://skillicons.dev/icons?i=threejs&perline=10)
 
 **Tools & Platforms**
 
