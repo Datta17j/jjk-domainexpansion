@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 
 const VOICE_COMMANDS = {
   // English Domain Expansions
@@ -145,7 +145,7 @@ const VoiceCommand = ({ onCommandDetected, onListeningChange, onError, active, l
             if (active) {
                 try {
                     recognition.start();
-                } catch (e) {
+                } catch {
                     // Fail silently or handle
                 }
             } else {

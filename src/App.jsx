@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import HandTracker from './components/HandTracker';
 import CursedVisualizer from './components/CursedVisualizer';
 import VoiceCommand from './components/VoiceCommand';
