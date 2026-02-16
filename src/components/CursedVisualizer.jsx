@@ -282,7 +282,7 @@ const CursedVisualizer = ({ technique }) => {
             if(tech === 'neutral' || tech === 'none') {
                 // Initialize a base field for neutral state so particles aren't just invisible
                 const r = 15 + Math.random()*20; const t = Math.random()*6.28; const ph = Math.random()*3.14;
-                p = { x: r*Math.sin(ph)*Math.cos(t), y: r*Math.sin(ph)*Math.sin(t), z: r*Math.cos(ph), r: 0.05, g: 0.05, b: 0.1, s: 0.3 };
+                p = { x: r*Math.sin(ph)*Math.cos(t), y: r*Math.sin(ph)*Math.sin(t), z: r*Math.cos(ph), r: 0.2, g: 0.2, b: 0.3, s: 0.3 };
 
                 // Add some variety to the first 5%
                 if(i < COUNT * 0.05) {
@@ -312,7 +312,7 @@ const CursedVisualizer = ({ technique }) => {
         }
     }, [technique]);
 
-    return <div ref={mountRef} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' }} />;
+    return <div ref={mountRef} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 15, pointerEvents: 'none' }} />;
 };
 
 export default CursedVisualizer;

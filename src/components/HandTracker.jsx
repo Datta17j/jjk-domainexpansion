@@ -35,7 +35,7 @@ const HandTracker = ({ onGestureDetected, glowColor }) => {
 
         const hands = new Hands({
             locateFile: (file) => {
-                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`;
             }
         });
 
@@ -49,8 +49,12 @@ const HandTracker = ({ onGestureDetected, glowColor }) => {
         hands.onResults((results) => {
             if (isStopped || !videoElement || !canvasElement) return;
 
-            canvasElement.width = videoElement.videoWidth;
-            canvasElement.height = videoElement.videoHeight;
+            if (videoElement.videoWidth > 0 && videoElement.videoHeight > 0) {
+                if (canvasElement.width !== videoElement.videoWidth || canvasElement.height !== videoElement.videoHeight) {
+                    canvasElement.width = videoElement.videoWidth;
+                    canvasElement.height = videoElement.videoHeight;
+                }
+            }
 
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
@@ -90,17 +94,18 @@ const HandTracker = ({ onGestureDetected, glowColor }) => {
                     detected = 'tenShadows';
                 } else {
                     const landmarks = results.multiHandLandmarks[0];
-                    const isUp = (t, p) => landmarks[t].y < landmarks[p].y;
+                    const isUp = (t, p) => landmarks[t].y < landmarks[p].y - 0.01;
                     const pinch = Math.hypot(landmarks[8].x - landmarks[4].x, landmarks[8].y - landmarks[4].y);
 
-                    if (pinch < 0.04) detected = 'hollowPurple';
+                    if (isUp(8,6) && isUp(12,10) && !isUp(16,14)) detected = 'infiniteVoid';
+                    else if (pinch < 0.04) detected = 'hollowPurple';
+                    else if (detectShadowPuppet(results.multiHandLandmarks)) detected = 'tenShadows';
                     else if (detectClosedFist(landmarks)) detected = landmarks[0].y < 0.35 ? 'jackpot' : 'blackFlash';
                     else if (detectFingerGuns(landmarks)) detected = 'comedy';
                     else if (detectFingerDrawing(landmarks)) detected = 'bloodManipulation';
                     else if (detectClawedHand(landmarks)) detected = 'disasterFlames';
                     else if (detectHandChopping(landmarks)) detected = 'ratioTechnique';
                     else if (isUp(8,6) && isUp(12,10) && isUp(16,14) && isUp(20,18)) detected = 'malevolentShrine';
-                    else if (isUp(8,6) && isUp(12,10) && !isUp(16,14)) detected = 'infiniteVoid';
                     else if (isUp(8,6) && !isUp(12,10)) detected = 'red';
                     else if (detectOpenPalm(landmarks)) detected = (landmarks[0].x < 0.25 || landmarks[0].x > 0.75) ? 'skyManipulation' : 'construction';
                     else if (landmarks[8].y > landmarks[7].y && landmarks[12].y > landmarks[11].y) detected = 'idleTransfiguration';
