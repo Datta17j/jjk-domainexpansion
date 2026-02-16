@@ -146,7 +146,7 @@ If you have any questions or issues, please open an issue on GitHub or contact t
 
 ## Enjoy Your Cursed Techniques! 🎮
 
-*"Throughout Heaven and Earth, I alone am the honored one."* - Gojo Satoru
+*"Gambare , Gambare"* - Ryomen Sukuna
 
 <p align="center">
 Made with 💜 for Jujutsu Kaisen fans
