@@ -114,6 +114,17 @@ const HandTracker = ({
         // GESTURE HELPERS
         // --------------------------
 
+        const distance = (a, b) => {
+            return Math.hypot(a.x - b.x, a.y - b.y);
+        };
+
+        const fingerDirection = (lm, tip, pip) => {
+            return {
+                dx: lm[tip].x - lm[pip].x,
+                dy: lm[tip].y - lm[pip].y
+            };
+        };
+
         const fingerExtended = (
             lm,
             tip,
@@ -128,6 +139,32 @@ const HandTracker = ({
             );
         };
 
+        const fingerPointingSideways = (
+            lm,
+            tip,
+            pip
+        ) => {
+            const dir = fingerDirection(lm, tip, pip);
+            return (
+                fingerExtended(lm, tip, pip) &&
+                Math.abs(dir.dx) > Math.abs(dir.dy) + 0.03
+            );
+        };
+
+        const detectHollowPurple = (lm) => {
+            const thumbIndexDistance = distance(
+                lm[4],
+                lm[8]
+            );
+
+            return (
+                thumbIndexDistance < 0.05 &&
+                !fingerExtended(lm, 12, 10) &&
+                !fingerExtended(lm, 16, 14) &&
+                !fingerExtended(lm, 20, 18)
+            );
+        };
+
         const detectClosedFist = (lm) => {
 
             return (
@@ -138,6 +175,37 @@ const HandTracker = ({
             );
         };
 
+        const detectIndexOnly = (lm) => {
+            return (
+                fingerExtended(lm, 8, 6) &&
+                !fingerExtended(lm, 12, 10) &&
+                !fingerExtended(lm, 16, 14) &&
+                !fingerExtended(lm, 20, 18)
+            );
+        };
+
+        const detectRed = (lm) => {
+            return (
+                detectIndexOnly(lm) &&
+                !fingerPointingSideways(lm, 8, 6) &&
+                lm[0].y <= 0.6
+            );
+        };
+
+        const detectBloodManipulation = (lm) => {
+            return (
+                detectIndexOnly(lm) &&
+                fingerPointingSideways(lm, 8, 6)
+            );
+        };
+
+        const detectCursedSpeech = (lm) => {
+            return (
+                detectIndexOnly(lm) &&
+                lm[0].y > 0.6
+            );
+        };
+
         const detectOpenPalm = (lm) => {
 
             return (
@@ -145,17 +213,6 @@ const HandTracker = ({
                 fingerExtended(lm, 12, 10) &&
                 fingerExtended(lm, 16, 14) &&
                 fingerExtended(lm, 20, 18)
-            );
-        };
-
-        const detectFingerGuns = (lm) => {
-
-            return (
-                fingerExtended(lm, 8, 6) &&
-                fingerExtended(lm, 4, 3) &&
-                !fingerExtended(lm, 12, 10) &&
-                !fingerExtended(lm, 16, 14) &&
-                !fingerExtended(lm, 20, 18)
             );
         };
 
@@ -192,21 +249,47 @@ const HandTracker = ({
         };
 
         const detectInfiniteVoid = (lm) => {
-
             return (
                 fingerExtended(lm, 8, 6) &&
                 fingerExtended(lm, 12, 10) &&
-                !fingerExtended(lm, 16, 14)
+                distance(lm[8], lm[12]) < 0.045
+            );
+        };
+
+        const detectSkyManipulation = (lm) => {
+            return (
+                detectOpenPalm(lm) &&
+                (lm[0].x < 0.18 || lm[0].x > 0.82)
+            );
+        };
+
+        const detectConstruction = (lm) => {
+            return (
+                detectOpenPalm(lm) &&
+                Math.abs(lm[8].x - lm[20].x) < 0.06 &&
+                lm[0].x >= 0.25 &&
+                lm[0].x <= 0.75
             );
         };
 
         const detectMalevolentShrine = (lm) => {
 
             return (
-                fingerExtended(lm, 8, 6) &&
-                fingerExtended(lm, 12, 10) &&
-                fingerExtended(lm, 16, 14) &&
-                fingerExtended(lm, 20, 18)
+                detectOpenPalm(lm) &&
+                !detectHandChop(lm) &&
+                !detectSkyManipulation(lm) &&
+                !detectConstruction(lm)
+            );
+        };
+
+        const detectIdleTransfiguration = (lm) => {
+            const downCount = [8, 12, 16, 20].reduce((count, i) => {
+                return count + (!fingerExtended(lm, i, i - 2) ? 1 : 0);
+            }, 0);
+            return (
+                downCount >= 3 &&
+                !detectClosedFist(lm) &&
+                !detectClawedHand(lm)
             );
         };
 
@@ -368,13 +451,59 @@ const HandTracker = ({
                     // --------------------------
 
                     if (
+                        detectHollowPurple(
+                            landmarks
+                        )
+                    ) {
+                        detected = 'hollowPurple';
+                    }
+
+                    else if (
                         detectInfiniteVoid(
                             landmarks
                         )
                     ) {
+                        detected = 'infiniteVoid';
+                    }
 
-                        detected =
-                            'infiniteVoid';
+                    else if (
+                        detectHandClap(
+                            results.multiHandLandmarks
+                        )
+                    ) {
+                        detected = 'boogieWoogie';
+                    }
+
+                    else if (
+                        detectShadowPuppet(
+                            results.multiHandLandmarks
+                        )
+                    ) {
+                        detected = 'tenShadows';
+                    }
+
+                    else if (
+                        detectCursedSpeech(
+                            landmarks
+                        )
+                    ) {
+                        detected = 'cursedSpeech';
+                    }
+
+                    else if (
+                        detectBloodManipulation(
+                            landmarks
+                        )
+                    ) {
+                        detected = 'bloodManipulation';
+                    }
+
+                    else if (
+                        detectRed(
+                            landmarks
+                        )
+                    ) {
+                        detected = 'red';
                     }
 
                     else if (
@@ -382,7 +511,6 @@ const HandTracker = ({
                             landmarks
                         )
                     ) {
-
                         detected =
                             landmarks[0].y < 0.35
                                 ? 'jackpot'
@@ -390,12 +518,11 @@ const HandTracker = ({
                     }
 
                     else if (
-                        detectFingerGuns(
+                        detectIdleTransfiguration(
                             landmarks
                         )
                     ) {
-
-                        detected = 'comedy';
+                        detected = 'idleTransfiguration';
                     }
 
                     else if (
@@ -403,7 +530,6 @@ const HandTracker = ({
                             landmarks
                         )
                     ) {
-
                         detected =
                             'disasterFlames';
                     }
@@ -413,9 +539,24 @@ const HandTracker = ({
                             landmarks
                         )
                     ) {
-
                         detected =
                             'ratioTechnique';
+                    }
+
+                    else if (
+                        detectSkyManipulation(
+                            landmarks
+                        )
+                    ) {
+                        detected = 'skyManipulation';
+                    }
+
+                    else if (
+                        detectConstruction(
+                            landmarks
+                        )
+                    ) {
+                        detected = 'construction';
                     }
 
                     else if (
@@ -423,19 +564,8 @@ const HandTracker = ({
                             landmarks
                         )
                     ) {
-
                         detected =
                             'malevolentShrine';
-                    }
-
-                    else if (
-                        detectOpenPalm(
-                            landmarks
-                        )
-                    ) {
-
-                        detected =
-                            'construction';
                     }
                 }
             }
@@ -475,24 +605,21 @@ const HandTracker = ({
                 detected ===
                 gestureState.candidate
             ) {
-
                 gestureState.frames++;
             }
 
             else {
-
                 gestureState.candidate =
                     detected;
-
                 gestureState.frames = 0;
             }
 
-            const REQUIRED_FRAMES = 4;
+            const REQUIRED_FRAMES =
+                detected === 'neutral' ? 8 : 4;
 
             if (
                 gestureState.frames >=
                     REQUIRED_FRAMES &&
-
                 gestureState.current !==
                     detected
             ) {

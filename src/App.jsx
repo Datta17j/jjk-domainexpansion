@@ -26,8 +26,10 @@ const TECH_COLORS = {
   neutral: '#00ffff'
 };
 
-function App() {
+const GESTURE_LOCK_MS = 5000;   // technique stays locked for 5s after activation
+const GESTURE_DEBOUNCE_MS = 600; // gesture must be held 600ms before firing
 
+function App() {
   const [currentTech, setCurrentTech] = useState('neutral');
   const [glowColor, setGlowColor] = useState('#00ffff');
   const [voiceActive, setVoiceActive] = useState(false);
@@ -36,166 +38,153 @@ function App() {
   const [muted, setMuted] = useState(false);
   const [audioStarted, setAudioStarted] = useState(false);
 
-  const voiceOverrideRef = useRef(null);
+  const lockRef = useRef(null);
+  const pendingGestureRef = useRef(null);
+  const debounceTimerRef = useRef(null);
 
   // -------------------
   // AUDIO CONTROL
   // -------------------
-
   useEffect(() => {
-
     if (!audioStarted || muted) return;
-
-    // Neutral = theme music
     if (currentTech === 'neutral' || currentTech === 'none') {
-
       AudioManager.stop();
-
       AudioManager.startThemeMusic();
-    }
-
-    // Technique active
-    else {
-
+    } else {
       AudioManager.stopThemeMusic();
-
       AudioManager.play(currentTech);
     }
-
   }, [currentTech, muted, audioStarted]);
 
   // -------------------
   // ACTIVATE TECHNIQUE
   // -------------------
-
   const activateTech = useCallback((techId) => {
-
     setCurrentTech(techId);
-
     setGlowColor(TECH_COLORS[techId] || '#00ffff');
-
+    // Set 5-second lock so gestures can't override
+    if (lockRef.current) clearTimeout(lockRef.current);
+    lockRef.current = setTimeout(() => {
+      lockRef.current = null;
+    }, GESTURE_LOCK_MS);
   }, []);
 
   // -------------------
-  // HAND GESTURES
+  // HAND GESTURES (with debounce + lock)
   // -------------------
-
   const handleGestureDetected = useCallback((techId) => {
+    // Blocked during lock window
+    if (lockRef.current) return;
 
-    if (!voiceOverrideRef.current) {
-      activateTech(techId);
+    // Already pending same gesture
+    if (pendingGestureRef.current === techId) return;
+
+    pendingGestureRef.current = techId;
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+    // Neutral resets immediately, no lock needed
+    if (techId === 'neutral') {
+      setCurrentTech('neutral');
+      setGlowColor(TECH_COLORS.neutral);
+      pendingGestureRef.current = null;
+      return;
     }
 
+    // Hold gesture for 600ms before firing
+    debounceTimerRef.current = setTimeout(() => {
+      if (pendingGestureRef.current === techId) {
+        activateTech(techId);
+      }
+      pendingGestureRef.current = null;
+    }, GESTURE_DEBOUNCE_MS);
   }, [activateTech]);
 
   // -------------------
   // VOICE COMMANDS
   // -------------------
-
   const handleVoiceCommand = useCallback((techId, spokenText) => {
-
     setLastHeard(spokenText);
-
     if (techId === 'release' || techId === 'stop' || techId === 'return') {
-
-      activateTech('neutral');
-
-      if (voiceOverrideRef.current) {
-        clearTimeout(voiceOverrideRef.current);
-      }
-
-      voiceOverrideRef.current = null;
-
+      if (lockRef.current) clearTimeout(lockRef.current);
+      lockRef.current = null;
+      setCurrentTech('neutral');
+      setGlowColor(TECH_COLORS.neutral);
       return;
     }
-
     if (techId && techId !== 'activate') {
-
       activateTech(techId);
-
-      if (voiceOverrideRef.current) {
-        clearTimeout(voiceOverrideRef.current);
-      }
-
-      voiceOverrideRef.current = setTimeout(() => {
-        voiceOverrideRef.current = null;
-      }, 5000);
     }
-
     setTimeout(() => {
-
-      setLastHeard(prev =>
-        prev === spokenText ? '' : prev
-      );
-
+      setLastHeard(prev => prev === spokenText ? '' : prev);
     }, 3000);
-
   }, [activateTech]);
 
   // -------------------
-  // MENU SELECT
+  // MENU / GESTURE GUIDE SELECT
   // -------------------
-
   const handleTechSelect = useCallback((techId) => {
-
-    if (voiceOverrideRef.current) {
-      clearTimeout(voiceOverrideRef.current);
-    }
-
-    voiceOverrideRef.current = null;
-
+    if (lockRef.current) clearTimeout(lockRef.current);
+    lockRef.current = null;
     activateTech(techId);
-
   }, [activateTech]);
 
   // -------------------
   // UI CONTROLS
   // -------------------
-
-  const toggleVoice = () => {
-    setVoiceActive(!voiceActive);
-  };
-
-  const toggleLanguage = () => {
-    setVoiceLanguage(prev =>
-      prev === 'en-US' ? 'ja-JP' : 'en-US'
-    );
-  };
-
-  const toggleMute = () => {
-    setMuted(AudioManager.toggleMute());
-  };
+  const toggleVoice = () => setVoiceActive(v => !v);
+  const toggleLanguage = () => setVoiceLanguage(l => l === 'en-US' ? 'ja-JP' : 'en-US');
+  const toggleMute = () => setMuted(AudioManager.toggleMute());
 
   // -------------------
-  // UNLOCK AUDIO
+  // UNLOCK AUDIO on first click
   // -------------------
-
   const unlockAudio = () => {
-
     if (audioStarted) return;
-
-    if (!muted) {
-      AudioManager.startThemeMusic();
-    }
-
+    if (!muted) AudioManager.startThemeMusic();
     setAudioStarted(true);
   };
 
   // -------------------
-  // RENDER
+  // SYNC MUTE + AUTO-UNLOCK (global first interaction)
   // -------------------
+  useEffect(() => {
+    // initialize muted state from AudioManager if available
+    if (AudioManager.getMuted) {
+      setMuted(AudioManager.getMuted());
+    }
+
+    const onFirstInteraction = () => {
+      if (!audioStarted) {
+        // check AudioManager's muted state at interaction time
+        const amMuted = AudioManager.getMuted ? AudioManager.getMuted() : false;
+        if (!amMuted) AudioManager.startThemeMusic();
+        setAudioStarted(true);
+      }
+    };
+
+    window.addEventListener('pointerdown', onFirstInteraction, { once: true });
+    window.addEventListener('keydown', onFirstInteraction, { once: true });
+
+    return () => {
+      try {
+        window.removeEventListener('pointerdown', onFirstInteraction);
+        window.removeEventListener('keydown', onFirstInteraction);
+      } catch (e) {}
+    };
+  }, []);
 
   return (
-
     <div className="App" onClick={unlockAudio}>
-
+      {!audioStarted && (
+        <div id="audio-unlock" style={{position: 'fixed', bottom: 20, left: 20, zIndex: 300, background: '#000000cc', color: '#fff', padding: '8px 12px', borderRadius: 6}}>
+          Click or press any key to enable audio
+        </div>
+      )}
       <HandTracker
         onGestureDetected={handleGestureDetected}
         glowColor={glowColor}
       />
-
       <CursedVisualizer technique={currentTech} />
-
       <VoiceCommand
         active={voiceActive}
         language={voiceLanguage}
@@ -203,7 +192,6 @@ function App() {
         onListeningChange={setVoiceActive}
         onError={(err) => console.error("Voice Error:", err)}
       />
-
       <UI
         technique={currentTech}
         voiceActive={voiceActive}
@@ -215,7 +203,6 @@ function App() {
         onToggleMute={toggleMute}
         onTechSelect={handleTechSelect}
       />
-
     </div>
   );
 }
